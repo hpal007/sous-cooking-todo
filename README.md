@@ -1,6 +1,8 @@
 # 🥘 Sous — your daily cooking to-do list
 
 > A simple AI micro-app that turns your day into a personal cooking to-do list.
+> 🔗 **Live demo:** https://sous-cooking-todo.vercel.app
+>
 > Built for **PromptWars** (Hack2Skill × Google for Developers) with **Google AI Studio (Gemini)**.
 
 Tell Sous what your day looks like. It returns a structured plan, not a wall of text:

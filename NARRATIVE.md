@@ -53,8 +53,8 @@ deployed on Vercel.
 **What I'd add next:** save plans, a weekly view, and pantry-aware grocery lists (skip what
 you already have).
 
-🔗 Live app: [LIVE_URL]
-💻 Code: [GITHUB_URL]
+🔗 Live app: https://sous-cooking-todo.vercel.app
+💻 Code: https://github.com/hpal007/sous-cooking-todo
 
 ---
 
@@ -77,7 +77,7 @@ Two things I'm happy with:
 
 Built with Next.js + TypeScript + Gemini, deployed on Vercel. Build-in-public ftw.
 
-🔗 Try it: [LIVE_URL]
-💻 Code: [GITHUB_URL]
+🔗 Try it: https://sous-cooking-todo.vercel.app
+💻 Code: https://github.com/hpal007/sous-cooking-todo
 
 #BuildWithAI #Gemini #GoogleAIStudio #Hackathon #AI
