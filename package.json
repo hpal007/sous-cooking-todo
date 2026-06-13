@@ -1,0 +1,25 @@
+{
+  "name": "cooking-todo-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "An AI micro-app that turns your day into a personal cooking to-do list: Breakfast/Lunch/Dinner plan, grocery list, smart substitutions, and budget feasibility logic. Built with Next.js + Google AI Studio (Gemini).",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@google/genai": "latest",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "typescript": "latest"
+  }
+}
