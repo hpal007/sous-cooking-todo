@@ -145,10 +145,10 @@ export default function Home() {
           </span>
           <span className="brand-name">Sous</span>
         </div>
-        <h1>Turn your day into a cooking to-do list</h1>
+        <h1>What should I cook today?</h1>
         <p className="tagline">
-          Tell Sous about your day. Get a breakfast / lunch / dinner plan, a
-          grocery list, smart substitutions, and a budget check — in one go.
+          Tell Sous about your day. Get a breakfast, lunch and dinner plan, a
+          grocery list, smart substitutions, and a budget check, all in one go.
         </p>
         <p className="powered">Powered by Google AI Studio · Gemini</p>
       </header>
@@ -365,12 +365,8 @@ export default function Home() {
                   </header>
                   <p className="meal-desc">{meal.description}</p>
                   <div className="meal-meta">
-                    <span>
-                      <Clock size={14} /> {meal.prepTimeMinutes} min
-                    </span>
-                    <span>
-                      <Flame size={14} /> {meal.calories} kcal
-                    </span>
+                    <span>{meal.prepTimeMinutes} min</span>
+                    <span>{meal.calories} kcal</span>
                     <span className="mm-cost">{money(meal.estimatedCost)}</span>
                   </div>
                   <div className="meal-steps">
