@@ -1,12 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { CookingPlan, MealSlot, PlanRequest } from "@/lib/types";
+import {
+  ArrowLeftRight,
+  Check,
+  ChefHat,
+  Clock,
+  Copy,
+  Flame,
+  Moon,
+  RotateCcw,
+  ShoppingCart,
+  Sunrise,
+  Utensils,
+  Wallet,
+} from "./icons";
 
-const MEAL_ORDER: { slot: MealSlot; label: string; icon: string }[] = [
-  { slot: "breakfast", label: "Breakfast", icon: "☀️" },
-  { slot: "lunch", label: "Lunch", icon: "🍽️" },
-  { slot: "dinner", label: "Dinner", icon: "🌙" },
+const MEAL_ORDER: {
+  slot: MealSlot;
+  label: string;
+  Icon: (p: { size?: number; className?: string }) => React.ReactElement;
+}[] = [
+  { slot: "breakfast", label: "Breakfast", Icon: Sunrise },
+  { slot: "lunch", label: "Lunch", Icon: Utensils },
+  { slot: "dinner", label: "Dinner", Icon: Moon },
 ];
 
 const EXAMPLE =
@@ -27,6 +45,8 @@ export default function Home() {
   const [plan, setPlan] = useState<CookingPlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checked, setChecked] = useState<Set<number>>(new Set());
+  const [copied, setCopied] = useState(false);
 
   function update<K extends keyof PlanRequest>(key: K, value: PlanRequest[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -37,6 +57,7 @@ export default function Home() {
     setLoading(true);
     setError(null);
     setPlan(null);
+    setChecked(new Set());
     try {
       const res = await fetch("/api/plan", {
         method: "POST",
@@ -58,17 +79,69 @@ export default function Home() {
     }
   }
 
+  function toggleItem(i: number) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      next.has(i) ? next.delete(i) : next.add(i);
+      return next;
+    });
+  }
+
+  function startOver() {
+    setPlan(null);
+    setError(null);
+    setChecked(new Set());
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function copyGroceryList() {
+    if (!plan) return;
+    const text = plan.groceryList
+      .map((it) => `- ${it.name} (${it.quantity}) — ${money(it.estimatedCost)}`)
+      .join("\n");
+    try {
+      await navigator.clipboard.writeText(
+        `Grocery list\n${text}\n\nTotal: ${money(plan.budget.estimatedTotal)}`,
+      );
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard unavailable — silently no-op */
+    }
+  }
+
   const money = (n: number) =>
     `${form.currency} ${Number(n).toLocaleString(undefined, {
       maximumFractionDigits: 2,
     })}`;
+
+  // Day totals reinforce the feasibility story: one glance at calories + time.
+  const totals = useMemo(() => {
+    if (!plan) return null;
+    const meals = MEAL_ORDER.map((m) => plan.meals[m.slot]).filter(Boolean);
+    return {
+      calories: meals.reduce((s, m) => s + (m.calories || 0), 0),
+      prepTime: meals.reduce((s, m) => s + (m.prepTimeMinutes || 0), 0),
+    };
+  }, [plan]);
+
+  // How full the budget bar is (0–100%), clamped so over-budget still renders.
+  const budgetPct = plan
+    ? Math.min(
+        100,
+        Math.round(
+          (plan.budget.estimatedTotal / Math.max(1, plan.budget.budgetLimit)) *
+            100,
+        ),
+      )
+    : 0;
 
   return (
     <main className="page">
       <header className="hero">
         <div className="brand">
           <span className="logo" aria-hidden="true">
-            🥘
+            <ChefHat size={20} />
           </span>
           <span className="brand-name">Sous</span>
         </div>
@@ -83,7 +156,13 @@ export default function Home() {
       <form className="card form" onSubmit={onSubmit} aria-busy={loading}>
         <label className="field field-wide">
           <span className="label">
-            What does your day look like?
+            <span>
+              What does your day look like?
+              <span className="req" aria-hidden="true">
+                {" "}
+                *
+              </span>
+            </span>
             <button
               type="button"
               className="ghost-btn"
@@ -197,11 +276,16 @@ export default function Home() {
       )}
 
       {loading && (
-        <div className="card skeleton-wrap" aria-hidden="true">
-          <div className="skeleton-line w-40" />
-          <div className="skeleton-line w-90" />
-          <div className="skeleton-line w-70" />
-        </div>
+        <>
+          <p className="sr-only" role="status">
+            Generating your cooking plan…
+          </p>
+          <div className="card skeleton-wrap" aria-hidden="true">
+            <div className="skeleton-line w-40" />
+            <div className="skeleton-line w-90" />
+            <div className="skeleton-line w-70" />
+          </div>
+        </>
       )}
 
       {!plan && !loading && !error && (
@@ -236,20 +320,43 @@ export default function Home() {
       {plan && (
         <section className="results" aria-live="polite">
           <div className="card summary">
-            <h2>Today&apos;s plan</h2>
-            <p>{plan.summary}</p>
+            <div className="summary-text">
+              <h2>Today&apos;s plan</h2>
+              <p>{plan.summary}</p>
+            </div>
+            {totals && (
+              <div className="summary-stats">
+                <div className="stat">
+                  <Flame size={16} />
+                  <span className="stat-value">{totals.calories}</span>
+                  <span className="stat-label">kcal / day</span>
+                </div>
+                <div className="stat">
+                  <Clock size={16} />
+                  <span className="stat-value">{totals.prepTime}</span>
+                  <span className="stat-label">min cooking</span>
+                </div>
+                <div className="stat">
+                  <Wallet size={16} />
+                  <span className="stat-value">
+                    {money(plan.budget.estimatedTotal)}
+                  </span>
+                  <span className="stat-label">est. cost</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <h3 className="section-title">Meals</h3>
           <div className="meals">
-            {MEAL_ORDER.map(({ slot, label, icon }) => {
+            {MEAL_ORDER.map(({ slot, label, Icon }) => {
               const meal = plan.meals[slot];
               if (!meal) return null;
               return (
                 <article className="card meal" key={slot}>
                   <header className="meal-head">
                     <span className="meal-icon" aria-hidden="true">
-                      {icon}
+                      <Icon size={20} />
                     </span>
                     <div>
                       <span className="meal-slot">{label}</span>
@@ -258,9 +365,13 @@ export default function Home() {
                   </header>
                   <p className="meal-desc">{meal.description}</p>
                   <div className="meal-meta">
-                    <span>{meal.prepTimeMinutes} min</span>
-                    <span>{meal.calories} kcal</span>
-                    <span>{money(meal.estimatedCost)}</span>
+                    <span>
+                      <Clock size={14} /> {meal.prepTimeMinutes} min
+                    </span>
+                    <span>
+                      <Flame size={14} /> {meal.calories} kcal
+                    </span>
+                    <span className="mm-cost">{money(meal.estimatedCost)}</span>
                   </div>
                   <div className="meal-steps">
                     <span className="mini-label">Cooking to-do</span>
@@ -277,26 +388,51 @@ export default function Home() {
 
           <div className="two-col">
             <div className="card">
-              <h3 className="section-title flush">
-                <span aria-hidden="true">🛒</span> Grocery list
-              </h3>
+              <div className="card-head">
+                <h3 className="section-title flush">
+                  <ShoppingCart size={18} /> Grocery list
+                </h3>
+                <button
+                  type="button"
+                  className="chip-btn"
+                  onClick={copyGroceryList}
+                >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
               <ul className="grocery">
-                {plan.groceryList.map((item, i) => (
-                  <li key={i}>
-                    <span className="g-name">
-                      {item.name}
-                      <span className="g-qty">{item.quantity}</span>
-                    </span>
-                    <span className="g-cat">{item.category}</span>
-                    <span className="g-cost">{money(item.estimatedCost)}</span>
-                  </li>
-                ))}
+                {plan.groceryList.map((item, i) => {
+                  const isChecked = checked.has(i);
+                  return (
+                    <li key={i} className={isChecked ? "is-checked" : undefined}>
+                      <label className="g-check">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleItem(i)}
+                        />
+                        <span className="g-box" aria-hidden="true">
+                          <Check size={13} />
+                        </span>
+                        <span className="g-name">
+                          {item.name}
+                          <span className="g-qty">{item.quantity}</span>
+                        </span>
+                      </label>
+                      <span className="g-cat">{item.category}</span>
+                      <span className="g-cost">
+                        {money(item.estimatedCost)}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
 
             <div className="card">
               <h3 className="section-title flush">
-                <span aria-hidden="true">🔄</span> Smart substitutions
+                <ArrowLeftRight size={18} /> Smart substitutions
               </h3>
               <ul className="subs">
                 {plan.substitutions.map((s, i) => (
@@ -316,11 +452,21 @@ export default function Home() {
           >
             <div className="budget-head">
               <h3 className="section-title flush">
-                <span aria-hidden="true">💸</span> Budget feasibility
+                <Wallet size={18} /> Budget feasibility
               </h3>
               <span className="badge">
                 {plan.budget.withinBudget ? "Within budget" : "Over budget"}
               </span>
+            </div>
+            <div
+              className="budget-bar"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={budgetPct}
+              aria-label="Estimated cost as a share of your budget"
+            >
+              <span className="budget-fill" style={{ width: `${budgetPct}%` }} />
             </div>
             <div className="budget-numbers">
               <div>
@@ -345,6 +491,12 @@ export default function Home() {
               </div>
             </div>
             <p className="budget-notes">{plan.budget.notes}</p>
+          </div>
+
+          <div className="results-actions">
+            <button type="button" className="secondary-btn" onClick={startOver}>
+              <RotateCcw size={16} /> Plan another day
+            </button>
           </div>
         </section>
       )}
