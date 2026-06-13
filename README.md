@@ -14,6 +14,55 @@ Tell Sous what your day looks like. It returns a structured plan, not a wall of 
 
 ---
 
+## Chosen vertical
+
+**Vertical: a daily home-cooking assistant.** The persona is a **busy home cook** — someone
+who, at the start of the day, doesn't want to think about *what* to cook, *what to buy*, or
+*whether they can afford it*. Sous turns their day's context (schedule, energy, people, diet,
+allergies, budget) into a complete, actionable cooking to-do list. It's a smart, dynamic
+assistant: the entire plan changes with the user's input, and it reasons about real-world
+constraints (time, money, allergens) rather than returning a fixed menu.
+
+## Approach & logic
+
+The challenge asked for a *structured meal-planning flow*, so the core of the app is a
+**forced-JSON contract with Gemini**. The model is required (via `responseSchema`) to
+return all four artifacts in a fixed shape every single time — so the output is a
+dependable data structure the UI renders, not free text we hope to parse.
+
+The decision-making is genuinely context-driven:
+- The user's day, diet, cuisine, party size, allergies, and budget all flow into the prompt.
+- **Allergens are an absolute rule** — they're stripped from every field, and a server-side
+  scanner re-checks the output and regenerates once if anything leaked.
+- **Budget feasibility is real logic, not a guess.** The server **recomputes** the grocery
+  total and the within-budget verdict from the actual numbers ([`lib/plan-logic.ts`](lib/plan-logic.ts)),
+  and if the plan is over budget the substitutions must include cheaper swaps that bring it
+  back under. The model proposes; the server verifies.
+
+## How it works
+
+1. The user fills in their day + constraints in the single-page UI ([`app/page.tsx`](app/page.tsx)).
+2. The browser POSTs to a server-only API route ([`app/api/plan/route.ts`](app/api/plan/route.ts)),
+   which validates and bounds every input with Zod and rate-limits the request.
+3. The server builds a prompt (user text safely delimited) and calls **Gemini** via Google AI
+   Studio with the forced JSON schema ([`lib/gemini.ts`](lib/gemini.ts)).
+4. The response is validated against a Zod output schema, allergen-scanned, and the budget is
+   recomputed deterministically.
+5. The structured plan is returned and rendered as meal cards, a grocery list, substitutions,
+   and a budget feasibility panel.
+
+## Assumptions
+
+- **Prices are estimates.** Gemini estimates costs in the chosen currency; they're indicative
+  for planning, not live market prices. The grocery total is treated as authoritative; per-meal
+  costs are indicative.
+- **One day at a time.** Sous plans a single day (breakfast/lunch/dinner), not a week.
+- **The grocery list is the budget basis** — the feasibility verdict is computed from grocery
+  item costs, assuming the user is shopping for the day rather than using a stocked pantry.
+- **English input**, and a small fixed set of currencies (INR/USD/EUR/GBP) and diets offered in
+  the UI. The allergy field is free text and treated as an absolute exclusion list.
+- **A valid Google AI Studio key** is provided server-side via `GEMINI_API_KEY`.
+
 ## Why this design
 
 The challenge asked for a *structured meal-planning flow*, so the core of the app is a
