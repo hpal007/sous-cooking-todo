@@ -1,6 +1,12 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { CookingPlan } from "./types";
-import type { ValidatedPlanRequest } from "./validation";
+import { cookingPlanSchema, type ValidatedPlanRequest } from "./validation";
+import {
+  buildPrompt,
+  findAllergenLeak,
+  parseAllergens,
+  reconcileBudget,
+} from "./plan-logic";
 
 // One shared client. The key is read from the server environment only and is
 // never sent to the browser. Built with Google AI Studio (Gemini).
@@ -129,41 +135,11 @@ const responseSchema = {
   ],
 };
 
-function buildPrompt(input: ValidatedPlanRequest): string {
-  return [
-    "You are a practical home-cooking planner. Turn the user's day into a personal cooking to-do list.",
-    "Plan three meals (breakfast, lunch, dinner) that realistically fit their schedule, energy, and time.",
-    "",
-    "Hard rules:",
-    `- Cook for ${input.people} ${input.people === 1 ? "person" : "people"}.`,
-    `- Respect dietary preference: ${input.dietaryPreference}.`,
-    `- Strictly avoid these allergens / disliked items: ${input.allergies}.`,
-    `- Lean toward this cuisine when sensible: ${input.cuisine}.`,
-    `- Total grocery budget is ${input.budget} ${input.currency} for the whole day.`,
-    "",
-    "Budget feasibility logic (important):",
-    "- Estimate a realistic cost for every grocery item in the user's currency.",
-    "- Sum them into estimatedTotal. Set withinBudget = (estimatedTotal <= budgetLimit).",
-    "- difference = estimatedTotal - budgetLimit (negative means under budget).",
-    "- If over budget, the substitutions list MUST include concrete cheaper swaps that would bring it under budget, and say so in budget.notes.",
-    "- If under budget, note the headroom and one optional upgrade.",
-    "",
-    "Substitutions: give 3-5 useful swaps for budget, allergy-safety, health, or availability. Never suggest anything containing a listed allergen.",
-    "",
-    "Keep steps short and actionable, like checklist items. Be specific with quantities in the grocery list.",
-    "",
-    `The user's day: "${input.dayContext}"`,
-  ].join("\n");
-}
-
-export async function generateCookingPlan(
-  input: ValidatedPlanRequest,
-): Promise<CookingPlan> {
+async function callModel(prompt: string): Promise<CookingPlan> {
   const ai = getClient();
-
   const response = await ai.models.generateContent({
     model: MODEL,
-    contents: buildPrompt(input),
+    contents: prompt,
     config: {
       responseMimeType: "application/json",
       responseSchema,
@@ -176,26 +152,38 @@ export async function generateCookingPlan(
     throw new Error("The model returned an empty response. Please try again.");
   }
 
-  let plan: CookingPlan;
+  let raw: unknown;
   try {
-    plan = JSON.parse(text) as CookingPlan;
+    raw = JSON.parse(text);
   } catch {
     throw new Error("The model returned malformed JSON. Please try again.");
   }
 
-  // Trust-but-verify the budget math. The model is good at this, but feasibility
-  // is the headline feature, so we recompute the verdict from the numbers we got
-  // rather than trusting the model's boolean blindly.
-  const computedTotal = Number(
-    plan.groceryList
-      .reduce((sum, item) => sum + (Number(item.estimatedCost) || 0), 0)
-      .toFixed(2),
-  );
-  plan.budget.estimatedTotal = computedTotal;
-  plan.budget.budgetLimit = input.budget;
-  plan.budget.currency = input.currency;
-  plan.budget.difference = Number((computedTotal - input.budget).toFixed(2));
-  plan.budget.withinBudget = computedTotal <= input.budget;
+  // Validate the shape before we trust it. This replaces an unchecked cast and
+  // guarantees every field the recompute and the UI rely on actually exists.
+  const parsed = cookingPlanSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new Error("The model returned an unexpected shape. Please try again.");
+  }
+  return parsed.data;
+}
 
+export async function generateCookingPlan(
+  input: ValidatedPlanRequest,
+): Promise<CookingPlan> {
+  const allergens = parseAllergens(input.allergies);
+  const prompt = buildPrompt(input, allergens);
+
+  let plan = await callModel(prompt);
+
+  // Allergen safety net: if a listed allergen leaked into any field, regenerate
+  // once with a sterner reminder. Capped at one retry to bound latency/cost.
+  const leaked = findAllergenLeak(plan, allergens);
+  if (leaked) {
+    const retryPrompt = `${prompt}\n\nCRITICAL: a previous attempt wrongly referenced "${leaked}". Produce a plan that contains absolutely no mention of [${allergens.join(", ")}] anywhere.`;
+    plan = await callModel(retryPrompt);
+  }
+
+  reconcileBudget(plan, input);
   return plan;
 }

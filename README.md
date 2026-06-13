@@ -64,6 +64,20 @@ npm run dev
 
 Open http://localhost:3000.
 
+## Tests
+
+The pure planning logic (budget recompute, allergen scan, input validation, rate
+limiter) is unit-tested with Vitest — no network or API key required.
+
+```bash
+npm test
+```
+
+25 tests cover: budget math (under / over / exact, NaN-safety, model-lie override,
+notes sanitization), the allergen leak scanner (including the `dairy-free`
+false-positive guard), the Zod input schema (bounds, defaults, coercion, currency
+allowlist), and the rate limiter (limit, reset, per-client isolation).
+
 ### Environment variables
 
 | Name             | Required | Description                                            |
@@ -77,10 +91,13 @@ Open http://localhost:3000.
 | -------------------------- | ------------------------------------------------ |
 | `app/page.tsx`             | The single-page UI: input form + results         |
 | `app/api/plan/route.ts`    | Server API: validate → generate → return         |
-| `lib/gemini.ts`            | Gemini client, response schema, budget recompute |
-| `lib/validation.ts`        | Zod input schema                                 |
+| `lib/gemini.ts`            | Gemini client, response schema, generation flow  |
+| `lib/plan-logic.ts`        | Pure logic: prompt, allergen scan, budget math   |
+| `lib/validation.ts`        | Zod input + output schemas                        |
+| `lib/rate-limit.ts`        | In-memory per-IP rate limiter                     |
 | `lib/types.ts`             | Shared domain types                              |
 | `app/globals.css`          | All styling                                      |
+| `tests/`                   | Vitest unit tests for the pure logic              |
 
 ## License
 

@@ -67,7 +67,9 @@ export default function Home() {
     <main className="page">
       <header className="hero">
         <div className="brand">
-          <span className="logo">🥘</span>
+          <span className="logo" aria-hidden="true">
+            🥘
+          </span>
           <span className="brand-name">Sous</span>
         </div>
         <h1>Turn your day into a cooking to-do list</h1>
@@ -78,7 +80,7 @@ export default function Home() {
         <p className="powered">Powered by Google AI Studio · Gemini</p>
       </header>
 
-      <form className="card form" onSubmit={onSubmit}>
+      <form className="card form" onSubmit={onSubmit} aria-busy={loading}>
         <label className="field field-wide">
           <span className="label">
             What does your day look like?
@@ -195,15 +197,44 @@ export default function Home() {
       )}
 
       {loading && (
-        <div className="card skeleton-wrap" aria-hidden>
+        <div className="card skeleton-wrap" aria-hidden="true">
           <div className="skeleton-line w-40" />
           <div className="skeleton-line w-90" />
           <div className="skeleton-line w-70" />
         </div>
       )}
 
+      {!plan && !loading && !error && (
+        <div className="card empty">
+          <h2>Your cooking plan will appear here</h2>
+          <p>
+            Describe your day above and Sous builds the whole thing in one go.
+          </p>
+          <div className="empty-steps">
+            <div className="empty-step">
+              <span className="es-num">1</span>
+              <span className="es-text">
+                Tell it about your day, diet, and budget
+              </span>
+            </div>
+            <div className="empty-step">
+              <span className="es-num">2</span>
+              <span className="es-text">
+                Get a breakfast, lunch &amp; dinner plan with steps
+              </span>
+            </div>
+            <div className="empty-step">
+              <span className="es-num">3</span>
+              <span className="es-text">
+                Plus a grocery list, swaps &amp; a budget check
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {plan && (
-        <section className="results">
+        <section className="results" aria-live="polite">
           <div className="card summary">
             <h2>Today&apos;s plan</h2>
             <p>{plan.summary}</p>
@@ -217,7 +248,9 @@ export default function Home() {
               return (
                 <article className="card meal" key={slot}>
                   <header className="meal-head">
-                    <span className="meal-icon">{icon}</span>
+                    <span className="meal-icon" aria-hidden="true">
+                      {icon}
+                    </span>
                     <div>
                       <span className="meal-slot">{label}</span>
                       <h4>{meal.name}</h4>
@@ -225,9 +258,9 @@ export default function Home() {
                   </header>
                   <p className="meal-desc">{meal.description}</p>
                   <div className="meal-meta">
-                    <span>⏱ {meal.prepTimeMinutes} min</span>
-                    <span>🔥 {meal.calories} kcal</span>
-                    <span>💰 {money(meal.estimatedCost)}</span>
+                    <span>{meal.prepTimeMinutes} min</span>
+                    <span>{meal.calories} kcal</span>
+                    <span>{money(meal.estimatedCost)}</span>
                   </div>
                   <div className="meal-steps">
                     <span className="mini-label">Cooking to-do</span>
@@ -244,7 +277,9 @@ export default function Home() {
 
           <div className="two-col">
             <div className="card">
-              <h3 className="section-title flush">🛒 Grocery list</h3>
+              <h3 className="section-title flush">
+                <span aria-hidden="true">🛒</span> Grocery list
+              </h3>
               <ul className="grocery">
                 {plan.groceryList.map((item, i) => (
                   <li key={i}>
@@ -260,7 +295,9 @@ export default function Home() {
             </div>
 
             <div className="card">
-              <h3 className="section-title flush">🔄 Smart substitutions</h3>
+              <h3 className="section-title flush">
+                <span aria-hidden="true">🔄</span> Smart substitutions
+              </h3>
               <ul className="subs">
                 {plan.substitutions.map((s, i) => (
                   <li key={i}>
@@ -278,7 +315,9 @@ export default function Home() {
             className={`card budget ${plan.budget.withinBudget ? "ok" : "over"}`}
           >
             <div className="budget-head">
-              <h3 className="section-title flush">💸 Budget feasibility</h3>
+              <h3 className="section-title flush">
+                <span aria-hidden="true">💸</span> Budget feasibility
+              </h3>
               <span className="badge">
                 {plan.budget.withinBudget ? "Within budget" : "Over budget"}
               </span>

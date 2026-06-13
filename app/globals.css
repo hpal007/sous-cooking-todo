@@ -5,7 +5,7 @@
   --card-2: #20283492;
   --border: #2a3340;
   --text: #eef2f7;
-  --muted: #98a4b3;
+  --muted: #aab6c4;
   --accent: #57d9a3;
   --accent-2: #4f9cf9;
   --warn: #f5a623;
@@ -75,6 +75,16 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* Keep the heading visible in Windows high-contrast / forced-colors mode,
+   where background-clip:text + transparent color would render it blank. */
+@media (forced-colors: active) {
+  .hero h1 {
+    -webkit-text-fill-color: currentColor;
+    color: CanvasText;
+    background: none;
+  }
 }
 
 .tagline {
@@ -164,14 +174,21 @@ textarea:focus {
 .ghost-btn {
   background: transparent;
   border: none;
-  color: var(--accent-2);
+  color: #7fb6ff;
   font-size: 12.5px;
   cursor: pointer;
-  padding: 0;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  border-radius: 6px;
   font-weight: 600;
 }
 .ghost-btn:hover {
   text-decoration: underline;
+}
+.ghost-btn:focus-visible,
+.submit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .submit {
@@ -273,8 +290,8 @@ textarea:focus {
 }
 
 .section-title {
-  font-size: 16px;
-  margin: 8px 2px;
+  font-size: 18px;
+  margin: 16px 2px 8px;
   color: var(--text);
 }
 .section-title.flush {
@@ -335,13 +352,62 @@ textarea:focus {
   color: var(--muted);
   font-weight: 700;
 }
+.meal-steps {
+  border-left: 2px solid var(--accent);
+  padding-left: 12px;
+}
 .meal-steps ol {
   margin: 8px 0 0;
   padding-left: 18px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
+  font-size: 14px;
+}
+
+/* ---------- Empty state ---------- */
+.empty {
+  margin-top: 22px;
+  text-align: center;
+  border-style: dashed;
+}
+.empty h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+.empty p {
+  margin: 0 auto 18px;
+  color: var(--muted);
+  max-width: 440px;
+}
+.empty-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.empty-step {
+  background: #0f141b;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 12px;
+}
+.empty-step .es-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(87, 217, 163, 0.15);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.empty-step span.es-text {
+  display: block;
   font-size: 13.5px;
+  color: var(--muted);
 }
 
 .two-col {
@@ -379,8 +445,8 @@ textarea:focus {
 }
 .g-cat {
   font-size: 11px;
-  color: var(--accent-2);
-  background: #16243a;
+  color: #d6e6ff;
+  background: #1c3354;
   padding: 3px 8px;
   border-radius: 999px;
 }
@@ -491,5 +557,26 @@ textarea:focus {
   }
   .budget-numbers {
     grid-template-columns: 1fr;
+  }
+  .empty-steps {
+    grid-template-columns: 1fr;
+  }
+  /* Restack grocery rows so the category pill and cost never cramp. */
+  .grocery li {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "name cost"
+      "cat  cat";
+    row-gap: 6px;
+  }
+  .grocery .g-name {
+    grid-area: name;
+  }
+  .grocery .g-cost {
+    grid-area: cost;
+  }
+  .grocery .g-cat {
+    grid-area: cat;
+    justify-self: start;
   }
 }
